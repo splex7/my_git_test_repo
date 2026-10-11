@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10131c">
+<title>빨무 3:3 · 빠른 전략</title>
+<style>
+  :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif; --bg:#10131c; --panel:#1b202d; --line:#343b4a; --text:#f3f5fa; --muted:#a4acbc; --p:#ffc96e; --t:#76baff; --z:#e1a8fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); }
+  main { max-width:640px; margin:0 auto; padding:23px 13px 42px; }
+  header { display:flex; align-items:start; justify-content:space-between; gap:8px; padding:0 2px 18px; }
+  h1 { margin:0; font-size:25px; font-weight:850; letter-spacing:-.055em; }
+  header p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+  .reset { background:transparent; border:1px solid #4a5362; border-radius:10px; color:#d1d8e4; padding:7px 10px; font-size:12px; white-space:nowrap; cursor:pointer; }
+  .teams { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+  .team { min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:15px; padding:13px 12px 10px; }
+  .team h2 { font-size:15px; margin:0 0 13px 2px; letter-spacing:-.035em; }
+  .team h2 span { color:var(--muted); font-size:11px; font-weight:500; margin-left:4px; }
+  .slot { display:grid; grid-template-columns:17px repeat(3,minmax(0,1fr)); gap:5px; align-items:center; margin-bottom:9px; }
+  .slot-label { text-align:center; font-size:11px; color:var(--muted); font-weight:600; }
+  button { -webkit-tap-highlight-color:transparent; font:inherit; }
+  .race { min-width:0; height:45px; border-radius:9px; border:1px solid #495364; background:#252c3a; color:#c7cddb; font-size:16px; font-weight:780; cursor:pointer; transition:background .1s, border-color .1s; }
+  .race:active { transform:scale(.97); }
+  .race[data-race="P"].selected { color:#251a05; background:var(--p); border-color:var(--p); }
+  .race[data-race="T"].selected { color:#0e2336; background:var(--t); border-color:var(--t); }
+  .race[data-race="Z"].selected { color:#2a1138; background:var(--z); border-color:var(--z); }
+  button:focus-visible { outline:2px solid white; outline-offset:2px; }
+  .legend { display:flex; flex-wrap:wrap; justify-content:center; gap:14px; margin:13px 0 22px; color:var(--muted); font-size:12px; }
+  .legend b { font-weight:800; }
+  .legend .p { color:var(--p); } .legend .t { color:var(--t); } .legend .z { color:var(--z); }
+  .tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .tab { height:48px; font-size:17px; font-weight:800; border-radius:11px; background:#242b39; border:1px solid var(--line); color:#a8b1c3; cursor:pointer; }
+  .tab.active { background:#e8eef9; border-color:#e8eef9; color:#151c29; }
+  .result { min-height:185px; padding:19px 18px 20px; background:var(--panel); border:1px solid var(--line); border-radius:15px; }
+  .summary { color:var(--muted); font-size:12px; letter-spacing:.008em; }
+  .result h2 { font-size:21px; line-height:1.38; letter-spacing:-.046em; margin:11px 0 14px; }
+  .result ul { list-style:none; margin:0; padding:0; display:grid; gap:11px; }
+  .result li { display:grid; grid-template-columns:20px minmax(0,1fr); gap:7px; align-items:start; font-size:14px; line-height:1.55; word-break:keep-all; color:#e2e6ee; }
+  .result li b { color:#89dece; font-size:14px; }
+  .hint { font-size:12px; color:var(--muted); margin-top:14px; line-height:1.45; }
+  @media (max-width:390px) {
+    main { padding:17px 9px 32px; }
+    h1 { font-size:23px; }
+    .teams { gap:7px; }
+    .team { padding:12px 7px 8px; }
+    .slot { grid-template-columns:14px repeat(3,minmax(0,1fr)); gap:4px; }
+    .race { height:43px; font-size:15px; border-radius:8px; }
+    .result { padding:17px 14px 20px; }
+  }
+  @media (prefers-reduced-motion:reduce) { .race { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><h1>빨무 3:3</h1><p>종족 선택 → 초반·중반 핵심 전략</p></div>
+    <button type="button" class="reset" id="reset">초기화</button>
+  </header>
+  <div class="teams" id="teams">
+    <section class="team" aria-label="우리 팀"><h2>우리 팀 <span>ALLY</span></h2><div id="allies"></div></section>
+    <section class="team" aria-label="적 팀"><h2>상대 팀 <span>ENEMY</span></h2><div id="enemies"></div></section>
+  </div>
+  <div class="legend" aria-label="종족 안내"><span><b class="p">P</b> 프로토스</span><span><b class="t">T</b> 테란</span><span><b class="z">Z</b> 저그</span></div>
+  <div class="tabs" role="tablist" aria-label="게임 진행 단계">
+    <button class="tab active" id="tab-early" type="button" role="tab" aria-selected="true" aria-controls="result" data-stage="early">초반</button>
+    <button class="tab" id="tab-mid" type="button" role="tab" aria-selected="false" aria-controls="result" data-stage="mid">중반</button>
+  </div>
+  <section class="result" id="result" role="tabpanel" aria-labelledby="tab-early" aria-live="polite">
+    <div class="summary" id="summary"></div>
+    <h2 id="title"></h2>
+    <ul id="tips"></ul>
+    <p class="hint" id="hint"></p>
+  </section>
+</main>
+<script>
+'use strict';
+// ?는 아직 종족이 확인되지 않은 슬롯이며, P/T/Z 중 하나를 누르면 바로 선택됩니다.
+const initial = { allies:['P','P','?'], enemies:['?','?','?'], stage:'early' };
+const state = { allies:[...initial.allies], enemies:[...initial.enemies], stage:initial.stage };
+const letters = ['P','T','Z'];
+
+const enemyPlans = {
+  PPP: {
+    early: ['질럿 합류부터 차단', '적 3토스 질럿이 뭉치기 전에 중앙 동선을 확인하세요.', '한쪽이 고립되면 병력을 모아 함께 압박하세요.'],
+    mid: ['다크·리버 대비', '적 로보틱스·템플러 테크를 정찰하고 탐지 수단을 확보하세요.', '캐논이 약한 쪽은 셔틀 견제로 일꾼을 노리세요.']
+  },
+  PPT: {
+    early: ['질럿 전선 확보', '적 토스 2명의 질럿 합류를 막고 테란의 벙커를 살피세요.', '벙커가 약한 테란을 노리되 질럿을 따로 보내지 마세요.'],
+    mid: ['테란 탱크 우회', '탱크·벙커 정면 돌파보다 드랍이나 측면 견제를 우선하세요.', '적 토스의 다크·리버 타이밍을 정찰하세요.']
+  },
+  PPZ: {
+    early: ['질럿+링 합류 경계', '적 토스 질럿과 저그 저글링의 동시 러시를 주의하세요.', '저그가 성큰을 덜 지었다면 팀 병력을 합쳐 압박하세요.'],
+    mid: ['저그 테크 확인', '뮤탈·히드라 전환에 맞춰 대공과 광역 공격을 준비하세요.', '적 토스의 다크와 리버 드랍도 대비하세요.']
+  },
+  PTT: {
+    early: ['탱크 완성 전 압박', '적 테란 2명이 벙커·팩토리를 갖추기 전에 약한 쪽을 찾으세요.', '적 토스의 질럿 역러시를 막을 병력은 남겨 두세요.'],
+    mid: ['탱크 라인 정면 금지', '적 탱크 진형은 드랍·우회로 흔들어 주세요.', '마인과 포격에 병력을 한꺼번에 잃지 않도록 주의하세요.']
+  },
+  PTZ: {
+    early: ['방어 약한 한 곳 집중', '질럿·마린·링이 섞여 들어오는 타이밍을 먼저 확인하세요.', '입구 방어가 약한 상대 한 명에게 병력을 모으세요.'],
+    mid: ['주력 테크 정찰', '상대의 탱크·뮤탈·리버 중 먼저 나오는 위협에 대응하세요.', '팀 병력을 흩지 말고 탐지·대공을 빠뜨리지 마세요.']
+  },
+  PZZ: {
+    early: ['링 물량에 대비', '적 저그 2명의 저글링 합류를 막을 입구 수비를 확보하세요.', '링을 막은 뒤 성큰이 적은 저그를 함께 압박하세요.'],
+    mid: ['뮤탈·히드라 동시 대비', '커세어·마린·히드라 등 가능한 대공 전력을 챙기세요.', '다크·리버를 섞는 적 토스도 정찰하세요.']
+  },
+  TTT: {
+    early: ['테란 수비 완성 전에 압박', '적 벙커와 팩토리 진척을 보고 가장 약한 테란을 찾으세요.', '벙커가 완성된 입구에 병력을 반복해서 낭비하지 마세요.'],
+    mid: ['탱크 라인 우회', '정면 돌파보다 드랍·공중·측면으로 생산 시설을 흔드세요.', '벌처 마인과 탱크 포격을 조심하세요.']
+  },
+  TTZ: {
+    early: ['링 방어하며 테란 견제', '저글링 러시에 대비하면서 테란의 빠른 확장을 방해하세요.', '성큰·벙커가 적은 한 곳에 병력을 집중하세요.'],
+    mid: ['탱크와 뮤탈 동시 대응', '적 탱크 진형은 우회하고 뮤탈 대비 대공을 남기세요.', '저그의 러커 전환도 확인하고 탐지를 준비하세요.']
+  },
+  TZZ: {
+    early: ['링 합동 러시 먼저 막기', '저그 2명의 저글링 물량을 대비해 중앙 진출을 신중하게 하세요.', '링을 막아낸 뒤 테란이 자리 잡기 전에 압박하세요.'],
+    mid: ['저그 물량 + 탱크 경계', '뮤탈·히드라를 막을 대공과 광역 공격을 갖추세요.', '탱크 전선과 저그 병력이 만나는 곳에서 무리하게 싸우지 마세요.']
+  },
+  ZZZ: {
+    early: ['3저그 링 러시 방어', '입구를 지키며 합쳐지는 저글링 병력을 먼저 끊으세요.', '성큰이 적고 병력이 비어 있는 저그를 역공하세요.'],
+    mid: ['뮤탈·히드라 물량 대비', '대공과 광역 피해 유닛을 확보하고 일꾼을 보호하세요.', '러커 가능성을 대비해 탐지를 준비하세요.']
+  }
+};
+
+function ownTeamTip(stage, group) {
+  const n = { P:0,T:0,Z:0 };
+  group.forEach(r => { if (r in n) n[r]++; });
+  if (stage === 'early') {
+    if (n.P >= 2) return '우리 토스 2명은 질럿을 합쳐 공격·수비하세요.';
+    if (n.T >= 2) return '우리 테란은 마린을 합쳐 초반 방어선을 만들고 타이밍을 맞추세요.';
+    if (n.Z >= 2) return '우리 저그는 링을 나눠 보내지 말고 한 명을 함께 압박하세요.';
+    if (n.P && n.T && n.Z) return '질럿을 앞세우고 마린·링을 함께 보내 한 곳만 치세요.';
+    if (n.P && n.T) return '우리 질럿은 앞에서, 마린은 뒤에서 함께 교전하세요.';
+    if (n.P && n.Z) return '질럿과 저글링의 출발 타이밍을 맞춰 몰아치세요.';
+    if (n.T && n.Z) return '마린으로 전선을 잡고 링으로 측면을 공략하세요.';
+    if (n.P) return '질럿을 모아서 교전하고 단독 돌진을 피하세요.';
+    if (n.T) return '마린이 각개 격파되지 않도록 병력을 합치세요.';
+    if (n.Z) return '저글링을 흩지 말고 다수로 합류하세요.';
+  } else {
+    if (n.P >= 2) return '우리 토스는 역할 분담: 한 명 병력 유지, 한 명 리버·하템 테크.';
+    if (n.T >= 2) return '우리 테란은 탱크 전선과 드랍·견제 역할을 나누세요.';
+    if (n.Z >= 2) return '우리 저그는 히드라·러커와 뮤탈·견제를 나눠 맡으세요.';
+    if (n.P && n.T && n.Z) return '토스 광역 공격, 테란 탱크, 저그 물량을 함께 쓰세요.';
+    if (n.P && n.T) return '토스 리버·스톰과 테란 탱크를 함께 운영하세요.';
+    if (n.P && n.Z) return '토스 광역 공격에 저그 히드라·뮤탈 지원을 합치세요.';
+    if (n.T && n.Z) return '테란 탱크 라인을 저그 병력으로 호위·우회하세요.';
+    if (n.P) return '탐지와 리버·하템 등 광역 공격 테크를 갖추세요.';
+    if (n.T) return '탱크 전선과 드랍·대공 대비를 병행하세요.';
+    if (n.Z) return '히드라·뮤탈 전환을 정찰에 맞춰 선택하세요.';
+  }
+  return '우리 팀 종족을 선택하면 역할 분담이 표시됩니다.';
+}
+
+function mountRaceButtons() {
+  [['allies','우리'],['enemies','상대']].forEach(([side, label]) => {
+    const host = document.getElementById(side);
+    for (let i = 0; i < 3; i++) {
+      const row = document.createElement('div');
+      row.className = 'slot';
+      row.setAttribute('role','group');
+      row.setAttribute('aria-label', `${label} 팀 ${i+1}번 종족`);
+      const num = document.createElement('span');
+      num.className = 'slot-label';
+      num.textContent = String(i+1);
+      row.append(num);
+      for (const race of letters) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'race';
+        button.textContent = race;
+        button.dataset.race = race;
+        button.setAttribute('aria-label', `${label} ${i+1}번 ${ {P:'프로토스',T:'테란',Z:'저그'}[race] }`);
+        button.addEventListener('click', () => {
+          state[side][i] = race;
+          render();
+        });
+        row.append(button);
+      }
+      host.append(row);
+    }
+  });
+}
+
+function render() {
+  for (const side of ['allies','enemies']) {
+    document.getElementById(side).querySelectorAll('.slot').forEach((row, i) => {
+      row.querySelectorAll('.race').forEach(button => {
+        const selected = button.dataset.race === state[side][i];
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+    });
+  }
+  document.querySelectorAll('.tab').forEach(tab => {
+    const active = tab.dataset.stage === state.stage;
+    tab.classList.toggle('active',active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.getElementById('result').setAttribute('aria-labelledby', `tab-${state.stage}`);
+  const summary = document.getElementById('summary');
+  const title = document.getElementById('title');
+  const tips = document.getElementById('tips');
+  const hint = document.getElementById('hint');
+  const knownEnemy = state.enemies.filter(r => r !== '?').length;
+  summary.textContent = `우리 ${state.allies.join(' · ')}   /   적 ${state.enemies.join(' · ')}`;
+  tips.replaceChildren();
+  if (knownEnemy < 3) {
+    title.textContent = `상대 ${3-knownEnemy}명 종족을 더 선택하세요`;
+    hint.textContent = '우리 1·2번은 프로토스로 기본 설정되어 있습니다. 각 버튼은 한 번만 누르면 선택됩니다.';
+    return;
+  }
+  const key = [...state.enemies].sort().join('');
+  const plan = enemyPlans[key][state.stage];
+  title.textContent = plan[0];
+  [plan[1], plan[2], ownTeamTip(state.stage, state.allies)].forEach((tip,i) => {
+    const li = document.createElement('li');
+    const b = document.createElement('b');
+    b.textContent = String(i+1).padStart(2,'0');
+    const span = document.createElement('span');
+    span.textContent = tip;
+    li.append(b, span);
+    tips.append(li);
+  });
+  hint.textContent = state.allies.includes('?') ? '우리 팀 미확인 종족을 선택하면 팀 전략도 자동 변경됩니다.' : '';
+}
+
+mountRaceButtons();
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => { state.stage = tab.dataset.stage; render(); }));
+document.getElementById('reset').addEventListener('click', () => {
+  state.allies = [...initial.allies];
+  state.enemies = [...initial.enemies];
+  state.stage = initial.stage;
+  render();
+});
+render();
+</script>
+</body>
+</html>
